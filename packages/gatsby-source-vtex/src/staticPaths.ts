@@ -17,7 +17,7 @@ interface Options {
 }
 
 interface SearchResult {
-  products: Array<{ link: string }>
+  products: Array<{ url: string }>
   pagination: {
     count: number
   }
@@ -100,11 +100,11 @@ const staticPaths = async ({
   )
 
   let page = 1
-  let products: SearchResult['products'] = []
+  let items = 0
 
-  while (products.length < totalItems) {
+  while (items < totalItems) {
     const {
-      products: p,
+      products,
       pagination: { count },
     } = await fetchIS<SearchResult>(
       api.is.search({
@@ -117,31 +117,22 @@ const staticPaths = async ({
       options
     )
 
-    products = [...products, ...p]
+    for (const { url } of products) {
+      if (!url) {
+        throw new Error(
+          `[gatsby-source-vtex]: Something went wrong while generating staticPaths. Expected a product path, but got ${url}`
+        )
+      }
 
+      paths.push(url)
+    }
+
+    items += products.length
     page += 1
 
     if (page > count) {
       break
     }
-  }
-
-  const uniqueItems = new Set(products.map((x) => x.link)).size
-
-  if (totalItems < uniqueItems) {
-    console.warn(
-      `Asked for ${totalItems} products, but fetched ${uniqueItems} products`
-    )
-  }
-
-  for (const { link } of products) {
-    if (!link) {
-      throw new Error(
-        `[gatsby-source-vtex]: Something went wrong while generating staticPaths. Expected a product path, but got ${link}`
-      )
-    }
-
-    paths.push(`/${link}/p`)
   }
 
   return paths
