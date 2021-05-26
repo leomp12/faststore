@@ -6,7 +6,7 @@ import slugify from 'slugify'
 import pMap from 'p-map'
 
 import { api } from './api'
-import { fetchVTEX } from './fetch'
+import { fetchIS, fetchVTEX } from './fetch'
 import type { Brand, Category } from './types'
 
 interface Options {
@@ -14,6 +14,13 @@ interface Options {
   workspace?: string
   environment?: 'vtexcommercestable' | 'vtexcommercebeta'
   maxNumPaths?: number // max number of staticPaths to generate
+}
+
+interface SearchResult {
+  products: Array<{ link: string }>
+  pagination: {
+    count: number
+  }
 }
 
 const readFileAsync = promisify(readFile)
@@ -86,38 +93,55 @@ const staticPaths = async ({
 
   // This generates at least `itemsPerPage` and at most 2500 product paths
   // `itemsPerPage` is an arbritary number, however 2500 is hard coded in VTEX search
-  const itemsPerPage = 25
-  const pagination = new Array(
-    Math.ceil(
-      Math.min(2500, Math.max(itemsPerPage, maxNumPaths - paths.length)) /
-        itemsPerPage
-    )
+  const itemsPerPage = 100
+  const totalItems = Math.min(
+    2500,
+    Math.max(itemsPerPage, maxNumPaths - paths.length)
   )
 
-  const products = await pMap(
-    pagination,
-    (_, pageIndex) =>
-      fetchVTEX<Array<{ linkText?: string }>>(
-        api.catalog.category.search({
-          sort: 'OrderByTopSaleDESC',
-          from: pageIndex * itemsPerPage,
-          to: pageIndex * itemsPerPage + itemsPerPage,
-        }),
-        options
-      ),
-    {
-      concurrency: 5,
-    }
-  ).then((p) => p.flat())
+  let page = 1
+  let products: SearchResult['products'] = []
 
-  for (const { linkText } of products) {
-    if (!linkText) {
+  while (products.length < totalItems) {
+    const {
+      products: p,
+      pagination: { count },
+    } = await fetchIS<SearchResult>(
+      api.is.search({
+        'hide-unavailable-items': false,
+        sort: 'orders:desc',
+        count: itemsPerPage,
+        operator: 'and',
+        page,
+      }),
+      options
+    )
+
+    products = [...products, ...p]
+
+    page += 1
+
+    if (page > count) {
+      break
+    }
+  }
+
+  const uniqueItems = new Set(products.map((x) => x.link)).size
+
+  if (totalItems < uniqueItems) {
+    console.warn(
+      `Asked for ${totalItems} products, but fetched ${uniqueItems} products`
+    )
+  }
+
+  for (const { link } of products) {
+    if (!link) {
       throw new Error(
-        `[gatsby-source-vtex]: Something went wrong while generating staticPaths. Expected a product path, but got ${linkText}`
+        `[gatsby-source-vtex]: Something went wrong while generating staticPaths. Expected a product path, but got ${link}`
       )
     }
 
-    paths.push(`/${linkText}/p`)
+    paths.push(`/${link}/p`)
   }
 
   return paths
