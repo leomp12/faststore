@@ -65,10 +65,10 @@ export const search = async (term: string) => {
   } else {
     // There is no specific page for this term, let's make a full text search
     params.set('map', 'term')
-    pathname = `/s/${encodeURIComponent(term)}`
+    pathname = `/s/${encodeURIComponent(term)}?${params.toString()}`
   }
 
   history.add(term)
 
-  navigate(`${pathname}?${params.toString()}`)
+  navigate(pathname)
 }
