@@ -42,11 +42,7 @@ export const replaceHydrateFunction = () => (
     hydrate = !!focusEl && focusEl.children.length > 0
   }
 
-  const root = createRoot(container, {
-    hydrate,
-  })
-
-  root.render(element, callback)
+  createRoot(container, { hydrate }).render(element)
 }
 
 export const wrapRootElement = ({ element }: WrapRootElementBrowserArgs) => (
