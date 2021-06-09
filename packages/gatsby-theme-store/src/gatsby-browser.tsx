@@ -3,9 +3,9 @@
 
 import 'requestidlecallback-polyfill'
 
+import React from 'react'
 import { UIProvider } from '@vtex/store-sdk'
-import React, { StrictMode } from 'react'
-import { unstable_createRoot as createRoot } from 'react-dom'
+import { createRoot } from 'react-dom'
 import type { WrapRootElementBrowserArgs } from 'gatsby'
 import type { ReactChild } from 'react'
 
@@ -19,47 +19,49 @@ import {
 import { Provider as RegionProvider } from './sdk/region/Provider'
 import { Provider as ToastProvider } from './sdk/toast/Provider'
 
-export const replaceHydrateFunction = () => async (
+export const onClientEntry = async () => {
+  if (typeof IntersectionObserver === 'undefined') {
+    await import('intersection-observer')
+  }
+}
+
+export const replaceHydrateFunction = () => (
   element: ReactChild,
   container: Element,
   callback: any
 ) => {
-  if (typeof IntersectionObserver === 'undefined') {
-    await import('intersection-observer')
+  let hydrate = true
+
+  // This part will be removed by webpack on production builds since this only
+  // serves for React not complaining about mismatches on devMode.
+  // We can not just default to `render` mode on devMode because the user may be using
+  // DEV_SSR=true flag
+  if (process.env.NODE_ENV !== 'production') {
+    const focusEl = document.getElementById(`gatsby-focus-wrapper`)
+
+    hydrate = !!focusEl && focusEl.children.length > 0
   }
 
-  const development = (process.env.GATSBY_BUILD_STAGE as any).includes(
-    'develop'
-  )
-
   const root = createRoot(container, {
-    hydrate: !development,
+    hydrate,
   })
 
   root.render(element, callback)
 }
 
-export const wrapRootElement = ({ element }: WrapRootElementBrowserArgs) => {
-  const root = (
-    <ErrorBoundary>
-      <VTEXRCProvider>
-        <ToastProvider>
-          <RegionProvider>
-            <OrderFormProvider>
-              <UIProvider>{element}</UIProvider>
-            </OrderFormProvider>
-          </RegionProvider>
-        </ToastProvider>
-      </VTEXRCProvider>
-    </ErrorBoundary>
-  )
-
-  if (process.env.NODE_ENV === 'development') {
-    return <StrictMode>{root}</StrictMode>
-  }
-
-  return root
-}
+export const wrapRootElement = ({ element }: WrapRootElementBrowserArgs) => (
+  <ErrorBoundary>
+    <VTEXRCProvider>
+      <ToastProvider>
+        <RegionProvider>
+          <OrderFormProvider>
+            <UIProvider>{element}</UIProvider>
+          </OrderFormProvider>
+        </RegionProvider>
+      </ToastProvider>
+    </VTEXRCProvider>
+  </ErrorBoundary>
+)
 
 export const onInitialClientRender = () => {
   globalThis.__REACT_HYDRATED__ = true
