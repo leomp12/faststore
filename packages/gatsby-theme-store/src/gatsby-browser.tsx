@@ -27,8 +27,7 @@ export const onClientEntry = async () => {
 
 export const replaceHydrateFunction = () => (
   element: ReactChild,
-  container: Element,
-  callback: any
+  container: Element
 ) => {
   let hydrate = true
 
