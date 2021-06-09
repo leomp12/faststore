@@ -10,7 +10,7 @@ import type { WrapRootElementBrowserArgs } from 'gatsby'
 import type { ReactChild } from 'react'
 
 import ErrorBoundary from './components/Error/ErrorBoundary'
-import { Provider as OrderFormProvider } from './sdk/orderForm/LazyProvider'
+import { Provider as OrderFormProvider } from './sdk/orderForm/Provider'
 import { Provider as VTEXRCProvider } from './sdk/pixel/vtexrc/Provider'
 import {
   onRouteUpdate as progressOnRouteUpdate,
